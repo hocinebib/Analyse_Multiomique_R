@@ -1,0 +1,296 @@
+---
+title: "TP \"Multi-omics\""
+author: "Elharty Hager, Meraouna Hocine, Kastalli Sleheddine M2BI"
+date: "20 - 21 octobre 2020"
+output: pdf_document
+---
+
+## Consignes
+
+Vous avez jusqu'au 30 Octobre 2020 pour rendre le devoir. Vous devez nous
+remettre un fichier Rmd qui contient les réponses à toutes les questions.
+Vous inclurez également **toutes les commandes** qui vous ont permises de répondre
+aux questions.
+
+N'oubliez pas d'inclure le nom et le prénom de tous les membres de l'équipe.
+
+Vous pouvez nous joindre aux adresses suivantes:
+
+* Arnaud Droit: Arnaud.Droit@crchudequebec.ulaval.ca
+* Antoine Bodein: Antoine.Bodein@crchudequebec.ulaval.ca
+* Charles Joly Beauparlant: Charles.Joly-Beauparlant@crchudequebec.ulaval.ca
+
+## Objectifs
+
+Utiliser les méthodes vu en cours pour intégrer des données multi-omiques.
+Une grande partie du TP est réalisé grâce à la suite d'outils `mixOmics`.
+De l'aide est disponible sur leur site (http://mixomics.org/).
+
+---
+
+# I) Partie I
+
+## 1). Préparation
+
+1. Chargez le package `mixOmics`
+
+```{r}
+if (!requireNamespace("BiocManager", quietly = TRUE))
+  install.packages("BiocManager")
+
+BiocManager::install("mixOmics")
+
+if (!requireNamespace("BiocManager", quietly = TRUE))
+  install.packages("BiocManager")
+
+BiocManager::install("timeOmics")
+
+library("timeOmics")
+library("mixOmics")
+
+
+install.packages("tidyverse")
+library("tidyverse")
+
+# pour la librairie lmms :
+install.packages("devtools")
+devtools::install_github("cran/lmms")
+library("lmms")
+
+```
+
+
+2. Téléchargez et importez les données (4 fichiers: `mirna.csv`, `mrna.csv`, `protein.csv`, `sample_group.csv`)
+
+```{r}
+data_mirna = read.csv("mirna.csv")
+data_mrna = read.csv("mrna.csv")
+data_protein = read.csv("protein.csv")
+data_sample = read.csv("sample_group.csv")
+
+```
+**Question 1:** Combien avez-vous d'échantillons ? de variables (mRNA, protéines, miRNA) ?
+Pour tout les fichiers ont a 150 obs 
+Pour miRNA = 185 variables
+Pour mRNA = 201 variables 
+Pour protéines =  143 variables 
+
+
+3. Le coefficient de variation est défini comme le rapport entre l'écart-type $\sigma$ et la moyenne $\mu$ : $c_v = \frac{\sigma}{\mu}$
+Construisez un fonction qui calcule le coefficient de variation à partir d'un vecteur.
+
+```{r}
+# Pour le jeu des miRNA
+
+coeff_var <- function(data){
+   moy = apply(data[,2:dim(data)[2]], 2, mean)
+   std = apply(data[,2:dim(data)[2]],2, sd)
+   coeff = NULL
+   for (i in c(1:length(moy))){
+      coeff = c(coeff, std[i] / moy[i])
+   }
+   names(coeff) = colnames(data[,2:dim(data)[2]])
+   return (coeff)
+}
+coeff_miRNA = coeff_var(data_mirna)
+coeff_mRNA = coeff_var(data_mrna)
+coeff_protein = coeff_var(data_protein)
+```
+
+4. A l'aide d'un histogramme `hist()` affichez la distribution de chacun des blocs.
+```{r}
+par(mfrow = c(1,3))
+hist(coeff_miRNA)
+hist(coeff_mRNA)
+hist(coeff_protein)
+```
+
+**Question 2:** La distribution des coefficients de variation est-elle similaire dans les 3 blocs ?
+Si oui, quel type de donnée possède le plus de variabilité ?
+La distribution des coefficients des miRNA et des mRNA est plutot similaire, mais pas du tout pour les protéines. 
+axe des x, plus variable pour prot que ARNm et miARN
+
+5. Pour chacun des blocs, filtrez les données les plus variantes : |coeff| >= 0.15
+```{r}
+coeff_miRNA_filtr <- coeff_miRNA[which(abs(coeff_miRNA) >= 0.15)]
+coeff_mRNA_filtr <- coeff_mRNA[which(abs(coeff_mRNA) >= 0.15)]
+coeff_protein_filtr <- coeff_protein[which(abs(coeff_protein) >= 0.15)]
+
+length(coeff_miRNA)
+length(coeff_miRNA_filtr)
+
+length(coeff_mRNA)
+length(coeff_mRNA_filtr)
+
+length(coeff_protein)
+length(coeff_protein_filtr)
+
+
+```
+**Question 3:**: Combien reste-il de gènes ? de protéines ? de miRNA ?
+miRNA = 82
+mRNA = 174
+protéine = 142 ca na pas bouger 
+
+**Question 4:** Quel est le gène le plus variant ? La protéine associé à ce gène est-elle présente dans le jeu de donnée ?
+On voit  que non, la protéine associé a ce gène n'est pas dans le jeu de donnée initiale
+
+```{r}
+coeff_mRNA_filtr[which(coeff_mRNA_filtr == max(coeff_mRNA_filtr))] 
+which(colnames(data_protein) == "PLCD4")
+
+```
+
+**Question 5:** A l'aide des bases de donnée de votre choix répondez aux questions suivantes:
+
+ * Quel est le rôle de ce gène ? 
+ * Sur quel chromosome est-il localisé ? 
+ * Quelle est la longueur en nucléotide de sa séquence ?
+ * Quelle est la longueur en acides aminés de la protéine associée (ou des isoformes) ?
+
+\newpage
+
+# Partie II
+
+## 1. Single-omic: l'ACP avec `mixOmics`
+
+**Question 6:** A quoi sert l'Analyse en Composante Principale ? Expliquez brievement sont fonctionnement ?
+
+1. Réaliser l'ACP sur les données mRNA.
+```{r}
+library(FactoMineR)
+library(factoextra)
+
+acp = PCA(data_mrna[,2:dim(data_mrna)[2]])
+fviz_pca_var(acp, col.var = "cos2")
+plot.PCA(acp)
+
+barplot(acp$eig[,1],main="valeur propre",names.arg=1:nrow(acp$eig))
+```
+
+**Question 7:** Combien de composantes retenez-vous ? Justifiez / Illustrez
+```{r}
+acp = PCA(data_mrna[,2:dim(data_mrna)[2]])
+#plot(acp$eig[,1],main="valeur propre",names.arg=1:nrow(acp$eig), type = "l")
+fviz_eig(acp, geom="line")
+# On garde 3 composantes
+```
+2. Après avoir relancer l'ACP avec le bon nombre de composante, utiliser un graphique pour représenter les variables.
+
+```{r}
+acp = PCA(data_mrna[,2:dim(data_mrna)[2]])
+acp2 = PCA(data_mrna[,2:dim(data_mrna)[2]], ncp = 10)
+#On a pris 10, generalement on prend 80% de l'information mais la on en a mm pas 40 avec 10 composantes
+fviz_pca_var(acp2, col.var = "cos2", ncp = 10)
+
+```
+
+**Question 8:** Quelles sont les variables qui contribuent le plus à l'axe 1 ?
+
+```{r}
+fviz_contrib(acp2, choice = "var", axes = 1, top = 20)
+
+```
+
+3. Avec un graphique, représenter les échantillons dans l'espace formé par les composantes. 
+Les échantillons sont colorés en fonction du groupe. Affichez la légende et ajoutez un titre.
+
+```{r}
+data_mrna$grp = data_sample[,2]
+
+fviz_pca_ind(acp2,addEllipses = TRUE,col.ind = data_mrna$grp, legend.title = "Groups", title = "Plot des individus des composantes princiaples 1 et 2.")
+
+```
+
+4. La *sparse ACP* `spca()` implémente une étape de *feature selection*. En utilisant la documentation de la fonction et/ou l'aide disponible en ligne,  utilisez la `spca()` de manière a sélectionner 10 gènes sur la première composante et 5 gènes sur la seconde composante.
+
+```{r}
+mySpca <- spca(data_mrna[,2:201])
+
+pc1 = mySpca$rotation[1:10,1]
+pc2 = mySpca$rotation[1:5,2]
+```
+
+**Question 9:** Quelles sont les gènes que vous avez sélectionnés? *(une fonction est disponible)*
+faudra rediger
+
+## 2. Projection on Latent Structures
+
+1. Réalisez une PLS `pls()` avec les données mRNA et protéines en incluant 3 composantes `(ncomp = 3)`.
+
+**Question 10:** A quoi sert la régression PLS pour l'intégration multi-omique?
+
+2. Affichez un *scatter plot* des échantillons en affichant uniquement les composantes 2 et 3.
+Les échantillons doivent être coloriés par groupe. Ajoutez une légende et un titre.
+
+3. Affichez un *arrow plot* en affichant uniquement les composantes 1 et 3.
+Les flèches doivent être coloriés par groupe. Ajoutez une légende et un titre.
+
+4. La *sparse PLS* `spls()` implémente une étape de *feature selection*. En utilisant la documentation de la fonction et/ou l'aide disponible en ligne,  utilisez la *sPLS* de manière a sélectionner (10 gènes, 9 protéines) sur la première composante, (5 gènes, 5 protéines) sur la seconde composante et (1 gène, 1 protéine) sur la troisième composante.
+
+**Question 11:** Quels sont les variables sélectionnées sur la troisième composante.
+
+5. Affichez un *CIM plot* à partir du modèle *sPLS*.
+
+**Question 12:** Quels sont les gènes et les protéines les plus corrélés? Justifiez à partir de la matrice de corrélation calculée par `cim()`.
+
+6. Toujours à partir du même modèle *sPLS*, affichez un *network plot* en affichant uniquement les les corrélations les plus forte $(\rho \pm 0.65)$.
+
+**Question 13:** Combien de clusters / sous-graphes observés vous ?
+
+## 2. *multiblock* Projection on Latent Structures
+
+1. Réalisez une multiblock PLS `pls()` avec les données mRNA, protéines et miRNA `(X = list(mrna, prot), Y = mirna)` en incluant 2 composantes `(ncomp = 2)`.
+
+2. Comme la `spls()`, la `block.spls()` implémente une étape de *feature selection*. En utilisant la documentation de la fonction et/ou l'aide disponible en ligne,  utilisez la fonction de manière a sélectionner (10 gènes, 9 protéines, 7 miRNA) sur la première composante et (5 gènes, 4 protéines, 3 miRNA) sur la seconde composante.
+
+**Question 14:** Quels sont les variables sélectionnées sur la première composante.
+
+## 3. Analyse supervisée : (s)PLS-DA
+
+Le fichier `sample_groupe.csv` associe un groupe à chaque échantillon.
+
+**Question 15:** Donnez la répartition des groupes.
+
+1. Utilisez la `pls.da()` en utilisant les gènes (`X`) et le groupe (`Y`) avec 2 composantes.
+
+2. Affichez le graphe des échantillons.
+
+**Question 16:** Comparez ce graphe avec le graphe des échantillons obtenu avec l'ACP (1.3). Quel méthode permet d'obtenir de meilleurs clusters?
+
+## 4. Analyse supervisée : block-(s)PLS-DA
+
+1. Réalisez une multiblock sPLS-DA `block.splsda()` avec les données mRNA, protéines, miRNA `(X = list(mrna, prot, mirna))` et le groupe en incluant 5 composantes `(ncomp = 5)`.
+
+2. Utiliser la fonction `perf()` sur le modèle obtenu. 
+
+**Question 17:** Quelle serait le nombre de composante minimal à inclure ?
+
+3. Relancez le modèle avec 2 composantes et utilisez l'option `keepX` pour sélectionner 15 gènes, protéines et miRNA sur la première compoante et 10 gènes, protéines et miRNA sur la seconde composante.
+
+4. Réalisez un *circos plot* avec le modèle obtenu en affichant les corrélations fortes $|\rho| > 0.5$. Ajoutez un titre.
+
+---
+
+# Partie III
+
+## 5. Mises en situation
+
+Dans cette section, nous allons vous présenter deux designs expérimentaux et il
+vous faudra déterminer quelle est l'approche analytique à privilégier pour
+répondre aux questions demandées. Il s'agit d'intégrer à la fois l'informations
+sur l'analyse bioinformatique en partant des données brutes mais également de
+cibler les bonnes approches multiomiques.
+
+1. Un de vos collègue s'intéresse aux effets de l'exposition à des polluants
+   sur la santé des ours polaires. Pour ce faire, il a accès à des données
+   transcriptomiques provenant d'une vingtaine de trios (un mère et sa portée
+   de deux enfants) ainsi qu'à diverses mesures cliniques numériques pour tous
+   les échantillons.
+
+2. Vous travaillez sur un modèle murin et vous souhaitez comprendre les impacts
+   d'un traitement sur le microbiote. Vous avez accès à des données de
+   séquençage de type 16S ainsi qu'à des données de métabolomiques pour des
+   souris traitées et pour des souris non-traitées. Vous pouvez prendre pour
+   acquis que l'analyse primaire des données de métabolomiques a déjà été
+   complétées et que vous avez déjà accès aux décomptes pour chaque molécules.
