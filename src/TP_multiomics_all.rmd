@@ -205,36 +205,113 @@ fviz_pca_ind(acp2,addEllipses = TRUE,col.ind = data_mrna$grp, legend.title = "Gr
 4. La *sparse ACP* `spca()` implémente une étape de *feature selection*. En utilisant la documentation de la fonction et/ou l'aide disponible en ligne,  utilisez la `spca()` de manière a sélectionner 10 gènes sur la première composante et 5 gènes sur la seconde composante.
 
 ```{r}
-mySpca <- spca(data_mrna[,2:201])
+mySpca <- spca(data_mrna[,2:201], keepX = c(10,5))
 
-pc1 = mySpca$rotation[1:10,1]
-pc2 = mySpca$rotation[1:5,2]
+plotVar(mySpca, overlap = TRUE, cex = 3)
+
 ```
 
 **Question 9:** Quelles sont les gènes que vous avez sélectionnés? *(une fonction est disponible)*
-faudra rediger
 
+```{r}
+selectVar(mySpca, comp = 1)$value
+selectVar(mySpca, comp = 2)$value
+```
+```{r}
+plotLoadings(mySpca, comp=1)
+plotLoadings(mySpca, comp=2)
+```
+
+
+
+
+###########################################
 ## 2. Projection on Latent Structures
 
 1. Réalisez une PLS `pls()` avec les données mRNA et protéines en incluant 3 composantes `(ncomp = 3)`.
+
+```{r}
+pls_data = pls(data_mrna[,2:201], data_protein[,2:143], ncomp=3)
+plotIndiv(pls_data, ncomp = 3)
+```
 
 **Question 10:** A quoi sert la régression PLS pour l'intégration multi-omique?
 
 2. Affichez un *scatter plot* des échantillons en affichant uniquement les composantes 2 et 3.
 Les échantillons doivent être coloriés par groupe. Ajoutez une légende et un titre.
 
+```{r}
+
+library(scatterplot3d)
+library(rgl)
+library(ggplot2)
+
+col <- c("red", "blue", "green")
+
+#scatterplot3d(pls_data$mat.c, color = as.numeric(data_mrna$grp))
+
+plotIndiv(pls_data,group=data_mrna$grp,comp=c(2,3),legend = T)
+
+```
+
 3. Affichez un *arrow plot* en affichant uniquement les composantes 1 et 3.
 Les flèches doivent être coloriés par groupe. Ajoutez une légende et un titre.
 
+```{r}
+
+plotArrow(pls_data,group=data_mrna$grp,comp=c(1,3),legend = T)
+
+```
+
 4. La *sparse PLS* `spls()` implémente une étape de *feature selection*. En utilisant la documentation de la fonction et/ou l'aide disponible en ligne,  utilisez la *sPLS* de manière a sélectionner (10 gènes, 9 protéines) sur la première composante, (5 gènes, 5 protéines) sur la seconde composante et (1 gène, 1 protéine) sur la troisième composante.
+
+```{r}
+
+Myspls <- spls(data_mrna[,2:201], data_protein[,2:143], keepX=c(10,5,1), keepY = c(9,5,1))
+
+plotVar(Myspls)
+
+selectVar(Myspls, comp = 1)$value
+
+Myspls
+
+```
 
 **Question 11:** Quels sont les variables sélectionnées sur la troisième composante.
 
 5. Affichez un *CIM plot* à partir du modèle *sPLS*.
 
+```{r}
+
+X11()
+plscimplt = cim(Myspls, comp = 1)
+#cimplot(v)
+#cim(Myspls, comp = 1, save = 'jpeg', name.save = 'PLScim')
+
+```
+
 **Question 12:** Quels sont les gènes et les protéines les plus corrélés? Justifiez à partir de la matrice de corrélation calculée par `cim()`.
 
+```{r}
+
+plscimplt$mat.cor
+
+c = which(plscimplt$mat.cor > 0.6)#== max(plscimplt$mat.cor))
+t = plscimplt$mat.cor[c]
+
+#names(plscimplt$mat.cor[,1][round(c/9)])
+
+
+```
+
 6. Toujours à partir du même modèle *sPLS*, affichez un *network plot* en affichant uniquement les les corrélations les plus forte $(\rho \pm 0.65)$.
+
+```{r}
+X11()
+network(Myspls, comp = 1)
+#network(Myspls, comp = 1, cutoff = 0.6, save = 'jpeg', name.save = 'PLSnetwork')
+
+```
 
 **Question 13:** Combien de clusters / sous-graphes observés vous ?
 
@@ -269,6 +346,7 @@ Le fichier `sample_groupe.csv` associe un groupe à chaque échantillon.
 3. Relancez le modèle avec 2 composantes et utilisez l'option `keepX` pour sélectionner 15 gènes, protéines et miRNA sur la première compoante et 10 gènes, protéines et miRNA sur la seconde composante.
 
 4. Réalisez un *circos plot* avec le modèle obtenu en affichant les corrélations fortes $|\rho| > 0.5$. Ajoutez un titre.
+
 
 ---
 
