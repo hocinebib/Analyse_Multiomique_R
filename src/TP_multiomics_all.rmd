@@ -232,10 +232,10 @@ plotLoadings(mySpca, comp=2)
 
 ```{r}
 pls_data = pls(data_mrna[,2:201], data_protein[,2:143], ncomp=3)
-plotIndiv(pls_data, ncomp = 3)
 ```
 
 **Question 10:** A quoi sert la régression PLS pour l'intégration multi-omique?
+=> Répondre 
 
 2. Affichez un *scatter plot* des échantillons en affichant uniquement les composantes 2 et 3.
 Les échantillons doivent être coloriés par groupe. Ajoutez une légende et un titre.
@@ -246,12 +246,11 @@ library(scatterplot3d)
 library(rgl)
 library(ggplot2)
 
-col <- c("red", "blue", "green")
+colors <- c("#999999", "#E69F00", "#56B4E9")
 
-#scatterplot3d(pls_data$mat.c, color = as.numeric(data_mrna$grp))
-
-plotIndiv(pls_data,group=data_mrna$grp,comp=c(2,3),legend = T)
-
+plotIndiv(pls_data,group=data_mrna$grp,comp=c(2,3), legend = T, ellipse = TRUE, ind.names = FALSE)
+          
+## Mettre un main et des légendes 
 ```
 
 3. Affichez un *arrow plot* en affichant uniquement les composantes 1 et 3.
@@ -259,7 +258,7 @@ Les flèches doivent être coloriés par groupe. Ajoutez une légende et un titr
 
 ```{r}
 
-plotArrow(pls_data,group=data_mrna$grp,comp=c(1,3),legend = T)
+plotArrow(pls_data,group=data_mrna$grp,comp=c(1,3),legend = T, title = "Arrow plot du modèle PLS  des mRNA et protéine")
 
 ```
 
@@ -267,11 +266,9 @@ plotArrow(pls_data,group=data_mrna$grp,comp=c(1,3),legend = T)
 
 ```{r}
 
-Myspls <- spls(data_mrna[,2:201], data_protein[,2:143], keepX=c(10,5,1), keepY = c(9,5,1))
+Myspls <- spls(data_mrna[,2:201], data_protein[,2:143],ncomp=3, keepX=c(10,5,1), keepY = c(9,5,1))
 
 plotVar(Myspls)
-
-selectVar(Myspls, comp = 1)$value
 
 Myspls
 
@@ -279,14 +276,18 @@ Myspls
 
 **Question 11:** Quels sont les variables sélectionnées sur la troisième composante.
 
+```{r}
+selectVar(Myspls, comp = 3)
+
+```
+
 5. Affichez un *CIM plot* à partir du modèle *sPLS*.
 
 ```{r}
 
 X11()
 plscimplt = cim(Myspls, comp = 1)
-#cimplot(v)
-#cim(Myspls, comp = 1, save = 'jpeg', name.save = 'PLScim')
+cim(Myspls, comp = 1, save = 'jpeg', name.save = 'PLScim')
 
 ```
 
@@ -300,7 +301,7 @@ c = which(plscimplt$mat.cor > 0.6)#== max(plscimplt$mat.cor))
 t = plscimplt$mat.cor[c]
 
 #names(plscimplt$mat.cor[,1][round(c/9)])
-
+## a revoir
 
 ```
 
@@ -309,7 +310,7 @@ t = plscimplt$mat.cor[c]
 ```{r}
 X11()
 network(Myspls, comp = 1)
-#network(Myspls, comp = 1, cutoff = 0.6, save = 'jpeg', name.save = 'PLSnetwork')
+network(Myspls, comp = 1, cutoff = 0.65, save = 'jpeg', name.save = 'PLSnetwork')
 
 ```
 
@@ -319,25 +320,79 @@ network(Myspls, comp = 1)
 
 1. Réalisez une multiblock PLS `pls()` avec les données mRNA, protéines et miRNA `(X = list(mrna, prot), Y = mirna)` en incluant 2 composantes `(ncomp = 2)`.
 
+```{r}
+multi_pls_data = pls(X = cbind(data_mrna[,2:201], data_protein[,2:143]), Y = data_mirna[,2:184], ncomp=2)
+plotIndiv(multi_pls_data, ncomp = 2)
+
+```
+
 2. Comme la `spls()`, la `block.spls()` implémente une étape de *feature selection*. En utilisant la documentation de la fonction et/ou l'aide disponible en ligne,  utilisez la fonction de manière a sélectionner (10 gènes, 9 protéines, 7 miRNA) sur la première composante et (5 gènes, 4 protéines, 3 miRNA) sur la seconde composante.
+
+```{r}
+MyMultispls <- block.spls(X = list(data_mrna[,2:201], data_protein[,2:143]), Y = data_mirna[,2:185], keepX=c(c(10,5),c(9,4)), keepY = c(7,3))
+
+plotVar(Myspls)
+
+```
 
 **Question 14:** Quels sont les variables sélectionnées sur la première composante.
 
+```{r}
+selectVar(Myspls, comp = 1)
+
+```
 ## 3. Analyse supervisée : (s)PLS-DA
 
 Le fichier `sample_groupe.csv` associe un groupe à chaque échantillon.
 
-**Question 15:** Donnez la répartition des groupes.
+**Question 15:** Donnez la répartition des groupes. 
+```{r}
+barplot(table(data_sample$Y))
+mettre title legend etcc
+```
+
 
 1. Utilisez la `pls.da()` en utilisant les gènes (`X`) et le groupe (`Y`) avec 2 composantes.
+```{r}
+X = data_mrna[,2:201]
+Y = data_mrna$grp
+Myplsda = plsda(X,Y, ncomp = 2)
+Myplsda
+```
 
 2. Affichez le graphe des échantillons.
 
+```{r}
+plotIndiv(Myplsda, ind.names = FALSE, legend=TRUE,
+          ellipse = TRUE, title = "PLS DA ")
+
+```
+
+
 **Question 16:** Comparez ce graphe avec le graphe des échantillons obtenu avec l'ACP (1.3). Quel méthode permet d'obtenir de meilleurs clusters?
+
+```{r}
+
+fviz_pca_ind(acp2,addEllipses = TRUE,col.ind = data_mrna$grp, legend.title = "Groups", title = "Plot des individus des composantes princiaples 1 et 2.")
+
+plotIndiv(Myplsda, ind.names = FALSE, legend=TRUE,
+          ellipse = TRUE, title = "PLS DA ")
+
+```
+# Commentaire ######
+
 
 ## 4. Analyse supervisée : block-(s)PLS-DA
 
 1. Réalisez une multiblock sPLS-DA `block.splsda()` avec les données mRNA, protéines, miRNA `(X = list(mrna, prot, mirna))` et le groupe en incluant 5 composantes `(ncomp = 5)`.
+```{r}
+c = cbind(data_mrna[,2:201],data_protein[,2:143], data_mirna[,2:185])
+
+block.plsda(X = c , Y = data_mrna$grp, ncomp = 5)
+
+```
+
+
 
 2. Utiliser la fonction `perf()` sur le modèle obtenu. 
 
